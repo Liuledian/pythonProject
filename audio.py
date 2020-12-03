@@ -4,20 +4,24 @@ import os
 import requests
 import uuid
 import math
+import time
 
 # record params
 audio_dir = os.getenv("HOME") + "/test/audio-data"
 chunk = 1024
 channels = 1
 fs = 16000
-seconds = 3
-# upload params
+seconds = 5
+# api params
 slice_size = 4 * 2**20
 productId = "278589295"
 apikey = "cc7d7c3a35654ed6bc7df213c78f9522"
 create_audio_url = "https://lasr.duiopen.com/lasr-file-api/v2/audio"
 upload_audio_url = "https://lasr.duiopen.com/lasr-file-api/v2/audio/{audio_id}/slice/{slice_index}"
-
+create_task_url = "https://lasr.duiopen.com/lasr-file-api/v2/task"
+poll_task_url = "https://lasr.duiopen.com/lasr-file-api/v2/task/{task_id}/progress"
+poll_period = 1
+get_result_url = "https://lasr.duiopen.com/lasr-file-api/v2/task/{task_id}/result"
 
 def record_audio_save(filename):
     sample_format = pyaudio.paInt16  # 16 bits per sample
@@ -63,8 +67,9 @@ def create_audio_on_server(slice_num):
     payload = {'audio_type': 'wav',
                'slice_num': slice_num}
     r = requests.post(create_audio_url, params=params, headers=headers, data=payload)
-    print(r.json())
-    audio_id = ""
+    j = r.json()
+    print(j)
+    audio_id = j['data']['audio_id']
     return audio_id, sid
 
 
@@ -83,14 +88,59 @@ def upload_audio(filename):
             data = audio_file.read(read_size)
             r = requests.post(upload_audio_url.format(audio_id,slice_index),
                               params=params, headers=headers, files={'slice': data})
-            print(r.text)
+            j = r.json()
+            print(j)
             file_size -= read_size
             slice_index += 1
 
+    return audio_id
 
-if __name__ == '__main__':
+
+def create_task(audio_id):
+    params = {'productId': productId,
+              'apikey': apikey}
+    headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
+    payload = {'audio_id': audio_id}
+    r = requests.post(create_task_url, params=params, headers=headers, data=payload)
+    j = r.json()
+    print(j)
+    return j['data']['task_id']
+
+
+def poll_task(task_id):
+    params = {'productId': productId,
+              'apikey': apikey}
+    while True:
+        r = requests.get(poll_task_url.format(task_id), params=params)
+        j = r.json()
+        print(j)
+        if j['data']['progress'] == 100:
+            return True
+        time.sleep(poll_period)
+
+
+def get_result(task_id):
+    params = {'productId': productId,
+              'apikey': apikey}
+    r = requests.get(get_result_url.format(task_id), params=params)
+    j = r.json()
+    print(j)
+    return j
+
+
+def main():
     if not os.path.exists(audio_dir):
         os.makedirs(audio_dir)
     files = os.listdir(audio_dir)
     index = len(files)
-    record_audio_save(filename=audio_dir+"/{}.wav".format(index))
+    filename = audio_dir+"/{}.wav".format(index)
+    record_audio_save(filename=filename)
+    audio_id = upload_audio(filename)
+    task_id = create_task(audio_id)
+    if poll_task(task_id):
+        res = get_result(task_id)
+    print(res)
+
+
+if __name__ == '__main__':
+    main()
