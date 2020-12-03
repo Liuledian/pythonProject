@@ -54,7 +54,11 @@ def create_audio_on_server():
     payload = {'audio_type': 'wav', 'slice_num': 1}
     r = requests.post(url, headers=headers, data=payload)
     print(r.json())
+    audio_id = ""
+    return audio_id, sid
 
+def upload_audio(filename, sid, slice):
+    url = 'https://lasr.duiopen.com/lasr-file-api/v2/audio/{audio_id}/slice/{slice_index}'.format(audio_id=)
 
 if __name__ == '__main__':
     if not os.path.exists(audio_dir):
