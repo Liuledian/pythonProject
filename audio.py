@@ -7,7 +7,7 @@ import math
 import time
 
 # record params
-audio_dir = os.getenv("HOME") + "/test/audio-data"
+audio_dir = "../../test/audio-data"
 chunk = 1024
 channels = 1
 fs = 16000
@@ -22,6 +22,7 @@ create_task_url = "https://lasr.duiopen.com/lasr-file-api/v2/task"
 poll_task_url = "https://lasr.duiopen.com/lasr-file-api/v2/task/{task_id}/progress"
 poll_period = 1
 get_result_url = "https://lasr.duiopen.com/lasr-file-api/v2/task/{task_id}/result"
+
 
 def record_audio_save(filename):
     sample_format = pyaudio.paInt16  # 16 bits per sample
@@ -75,19 +76,20 @@ def create_audio_on_server(slice_num):
 
 def upload_audio(filename):
     file_size = os.path.getsize(filename)
+    print(file_size)
     slice_num = math.ceil(file_size/slice_size)
+    print(slice_num)
     audio_id, sid = create_audio_on_server(slice_num)
     params = {'productId': productId,
               'apikey': apikey}
-    headers = {'Content-Type': 'multipart/form-data',
-               'x-sessionId': sid}
+    headers = {'x-sessionId': sid}
     with open(filename, 'rb') as audio_file:
         slice_index = 0
         while file_size > 0:
             read_size = min(file_size, slice_size)
             data = audio_file.read(read_size)
-            r = requests.post(upload_audio_url.format(audio_id,slice_index),
-                              params=params, headers=headers, files={'slice': data})
+            r = requests.post(upload_audio_url.format(audio_id=audio_id, slice_index=slice_index),
+                              params=params, headers=headers, files={'file': data})
             j = r.json()
             print(j)
             file_size -= read_size
@@ -111,7 +113,7 @@ def poll_task(task_id):
     params = {'productId': productId,
               'apikey': apikey}
     while True:
-        r = requests.get(poll_task_url.format(task_id), params=params)
+        r = requests.get(poll_task_url.format(task_id=task_id), params=params)
         j = r.json()
         print(j)
         if j['data']['progress'] == 100:
@@ -122,19 +124,24 @@ def poll_task(task_id):
 def get_result(task_id):
     params = {'productId': productId,
               'apikey': apikey}
-    r = requests.get(get_result_url.format(task_id), params=params)
+    r = requests.get(get_result_url.format(task_id=task_id), params=params)
     j = r.json()
     print(j)
-    return j
+    return j['data']['result']
 
 
 def main():
+    # generate a new filename
     if not os.path.exists(audio_dir):
         os.makedirs(audio_dir)
     files = os.listdir(audio_dir)
-    index = len(files)
+    index = 0 #len(files)
     filename = audio_dir+"/{}.wav".format(index)
-    record_audio_save(filename=filename)
+
+    # record a new wav
+    #record_audio_save(filename=filename)
+
+    # call api to translate
     audio_id = upload_audio(filename)
     task_id = create_task(audio_id)
     if poll_task(task_id):
