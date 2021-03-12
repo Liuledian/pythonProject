@@ -8,6 +8,12 @@ english_frequences = [0.08167, 0.01492, 0.02782, 0.04253, 0.12702, 0.02228, 0.02
                       0.00978, 0.02360, 0.00150, 0.01974, 0.00074]
 
 
+def print_ic_table(ic_table):
+    print("ic table is followed")
+    for i in range(MAX_KEY_LENGTH_GUESS):
+        print("{} : {}".format(i+1, ic_table[i]))
+
+
 # Returns the Index of Councidence for the "section" of ciphertext given
 def get_index_c(ciphertext):
     N = float(len(ciphertext))
@@ -30,7 +36,7 @@ def get_key_length(ciphertext):
     # Ex. guessing a key length of 2 splits the "12345678" into "1357" and "2468"
     # This procedure of breaking ciphertext into sequences and sorting it by the Index of Coincidence
     # The guessed key length with the highest IC is the most porbable key length
-    for guess_len in range(MAX_KEY_LENGTH_GUESS):
+    for guess_len in range(1, MAX_KEY_LENGTH_GUESS + 1):
         ic_sum = 0.0
         avg_ic = 0.0
         for i in range(guess_len):
@@ -39,14 +45,13 @@ def get_key_length(ciphertext):
             for j in range(0, len(ciphertext[i:]), guess_len):
                 sequence += ciphertext[i + j]
             ic_sum += get_index_c(sequence)
-        # obviously don't want to divide by zero
-        if not guess_len == 0:
-            avg_ic = ic_sum / guess_len
-        ic_table.append(avg_ic)
 
+        avg_ic = ic_sum / guess_len
+        ic_table.append(avg_ic)
+    print_ic_table(ic_table)
     # returns the index of the highest Index of Coincidence (most probable key length)
-    best_guess = ic_table.index(sorted(ic_table, reverse=True)[0])
-    second_best_guess = ic_table.index(sorted(ic_table, reverse=True)[1])
+    best_guess = ic_table.index(sorted(ic_table, reverse=True)[0]) + 1
+    second_best_guess = ic_table.index(sorted(ic_table, reverse=True)[1]) + 1
 
     # Since this program can sometimes think that a key is literally twice itself, or three times itself,
     # it's best to return the smaller amount.
@@ -148,26 +153,25 @@ def encrypt(plaintext, key):
 def main():
     ask = True
     while ask:
-        text = input("Enter e to encrypt, or d to decrypt: ")
-        if text == 'e':
-            plaintext_unfiltered = input("Enter plaintext to encrypt: ")
-            key_unfiltered = input("Enter key to encrypt with: ")
+        text = input("Enter 0 to encrypt, 1 to decrypt: ")
+        if text == '0':
+            plaintext_raw = input("Enter plaintext: ")
+            key_raw = input("Enter a key: ")
 
-            # Filters the text so it is only alphanumeric characters, and lowercase
-            plaintext = ''.join(x.lower() for x in plaintext_unfiltered if x.isalpha())
-            key = ''.join(x.lower() for x in key_unfiltered if x.isalpha())
-            print(key)
-
+            # Filter plaintext and key to assure they are alphabetic and lowercase
+            plaintext = ''.join(x.lower() for x in plaintext_raw if x.isalpha())
+            key = ''.join(x.lower() for x in key_raw if x.isalpha())
+            print("key:{}".format(key))
             ciphertext = encrypt(plaintext, key)
             print("Ciphertext: {}".format(ciphertext))
 
             ask = False
-        elif text == 'd':
-            ciphertext_unfiltered = input("Enter ciphertext to decrypt: ")
+        elif text == '1':
+            ciphertext_raw = input("Enter ciphertext: ")
 
-            # Filters the text so it is only alphanumeric characters, and lowercase
-            ciphertext = ''.join(x.lower() for x in ciphertext_unfiltered if x.isalpha())
-
+            # Filter ciphertext to assure they are alphabetic and lowercase
+            ciphertext = ''.join(x.lower() for x in ciphertext_raw if x.isalpha())
+            print("ciphertext: {}".format(ciphertext))
             askkey = True
             while askkey:
                 torf = input("Do you know the key to decrypt with? Enter y or n: ")
@@ -185,8 +189,8 @@ def main():
                     askkey = False
                 elif torf == 'y':
 
-                    key_unfiltered = input("Enter key to decrypt with: ")
-                    key = ''.join(x.lower() for x in key_unfiltered if x.isalpha())
+                    key_raw = input("Enter key to decrypt with: ")
+                    key = ''.join(x.lower() for x in key_raw if x.isalpha())
                     plaintext = decrypt(ciphertext, key)
 
                     print("Plaintext: {}".format(plaintext))
