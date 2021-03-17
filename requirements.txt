@@ -4,3 +4,6 @@ idna==2.10
 PyAudio==0.2.11
 requests==2.25.0
 urllib3==1.26.2
+flask==1.1.2
+gunicorn
+tqdm
