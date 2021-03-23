@@ -69,7 +69,7 @@ def find_next_character(base):
 
     for top_character in top_characters:
         ratio = int((1 - (top_character['median'] / found_character['median'])) * 100)
-        msg ="Character: %r Median: %s Max: %s Min: %s Stddev: %s (%d%% slower)"
+        msg ="Character: %r Median: %s Max: %s Min: %s Stddev: %s (%d%% shorter)"
         print(msg % (top_character['character'], top_character['median'], top_character['max'], top_character['min'], top_character['stddev'], ratio))
 
     return found_character['character']

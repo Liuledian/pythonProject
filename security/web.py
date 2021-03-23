@@ -38,10 +38,10 @@ def dummy_verify(sig):
 
 def hash_verify(sig):
     h1 = hashlib.sha256()
-    h1.update(sig)
+    h1.update(sig.encode('ascii'))
     hash_value1 = h1.hexdigest()
     h2 = hashlib.sha256()
-    h2.update(SECRET)
+    h2.update(SECRET.encode('ascii'))
     hash_value2 = h2.hexdigest()
     for c1, c2 in zip(hash_value1, hash_value2):
         if c1 != c2:
