@@ -33,6 +33,12 @@ def dummy_verify(sig):
             # dummy operation
             dummy = flag
         time.sleep(0.01)
+
+    if len(sig) < len(SECRET):
+        flag = False
+    else:
+        flag = flag
+
     return flag
 
 
@@ -62,7 +68,7 @@ def naive():
 
 
 @app.route("/dummy")
-def standard():
+def dummy():
     token = request.headers.get('X-TOKEN')
     if not token:
         return "Missing token", 401
@@ -73,7 +79,7 @@ def standard():
 
 
 @app.route("/hash")
-def mine():
+def my_hash():
     token = request.headers.get('X-TOKEN')
     if not token:
         return "Missing token", 401
