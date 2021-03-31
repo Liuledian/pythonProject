@@ -78,12 +78,12 @@ class MLQP():
                              @ self.deltas[i + 1] \
                              * MLQP.sigmoid_dot(self.zs[i]).T
 
-    def update(self, lr):
+    def update(self, lr, l2):
         for i in range(1, self.n_hidden + 2):
             dWl = np.tile(self.xs[i - 1].T, (1, self.Wl_ls[i].shape[1])) * self.deltas[i].T
             dWq = np.tile(np.square(self.xs[i - 1].T), (1, self.Wq_ls[i].shape[1])) * self.deltas[i].T
             db = self.deltas[i].T
-            self.Wl_ls[i] -= lr * dWl
-            self.Wq_ls[i] -= lr * dWq
+            self.Wl_ls[i] -= lr * (dWl + l2 * self.Wl_ls[i])
+            self.Wq_ls[i] -= lr * (dWq + l2 * self.Wq_ls[i])
             self.b_ls[i] -= lr * db
 
