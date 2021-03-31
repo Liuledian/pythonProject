@@ -5,6 +5,42 @@ import matplotlib.pyplot as plt
 import pickle
 
 
+class MinMax():
+
+    def __init__(self):
+        self.model1 = None
+        self.model2 = None
+        self.model3 = None
+        self.model4 = None
+
+    def train_minmax(self, in_dim, h_dims, X_tr, Y_tr, X_te, Y_te, n_epochs, lr, gamma, l2):
+        total_samples = len(Y_tr)
+        step = total_samples // 4
+        perm = np.random.permutation(total_samples)
+        X_tr_ls = []
+        Y_tr_ls = []
+        X_tr_ls.append(X_tr[perm[0: step]])
+        Y_tr_ls.append(Y_tr[perm[0: step]])
+        X_tr_ls.append(X_tr[perm[step: 2 * step]])
+        Y_tr_ls.append(Y_tr[perm[step: 2 * step]])
+        X_tr_ls.append(X_tr[perm[2 * step: 3 * step]])
+        Y_tr_ls.append(Y_tr[perm[2 * step: 3 * step]])
+        X_tr_ls.append(X_tr[perm[3 * step:]])
+        Y_tr_ls.append(Y_tr[perm[3 * step:]])
+
+        self.model1 = train_mlqp(in_dim, h_dims, X_tr_ls[0], Y_tr_ls[0], X_te, Y_te, n_epochs, lr, gamma, l2)
+        self.model2 = train_mlqp(in_dim, h_dims, X_tr_ls[1], Y_tr_ls[1], X_te, Y_te, n_epochs, lr, gamma, l2)
+        self.model3 = train_mlqp(in_dim, h_dims, X_tr_ls[2], Y_tr_ls[2], X_te, Y_te, n_epochs, lr, gamma, l2)
+        self.model4 = train_mlqp(in_dim, h_dims, X_tr_ls[3], Y_tr_ls[3], X_te, Y_te, n_epochs, lr, gamma, l2)
+
+    def forward(self, x):
+        y1 = True if self.model1.forward(x) >= 0.5 else False
+        y2 = True if self.model2.forward(x) >= 0.5 else False
+        y3 = True if self.model3.forward(x) >= 0.5 else False
+        y4 = True if self.model4.forward(x) >= 0.5 else False
+        return float((y1 and y2) or (y3 and y4))
+
+
 def build_dataset(path, n_train_samples):
     data_file = open(path)
     X = []
@@ -41,7 +77,7 @@ def evaluate(model, X, Y):
     return acc, f1
 
 
-def train(in_dim, h_dims, X_tr, Y_tr, X_te, Y_te, n_epochs, lr, gamma, l2):
+def train_mlqp(in_dim, h_dims, X_tr, Y_tr, X_te, Y_te, n_epochs, lr, gamma, l2):
     model = MLQP(in_dim, h_dims)
     n_tr = len(Y_tr)
     for ep in range(1, n_epochs + 1):
@@ -63,10 +99,9 @@ def train(in_dim, h_dims, X_tr, Y_tr, X_te, Y_te, n_epochs, lr, gamma, l2):
     return model
 
 
-def plot_graph(model, mode):
+def plot_subgraph(fig, position, model, mode):
     s = 100
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
+    ax = fig.add_subplot(*position)
     lin = np.linspace(-6, 6, s)
     hm = np.zeros((s, s))
     for i in range(s):
@@ -83,13 +118,33 @@ def plot_graph(model, mode):
     ax.set_yticks(np.linspace(0, s - 1, 13))
     ax.set_xticklabels(np.arange(-6, 7, 1))
     ax.set_yticklabels(np.arange(6, -7, -1))
+
+
+def mlqp_main():
+    np.random.seed(0)
+    data_path = 'two-spiral traing data(update).txt'
+    X_tr, Y_tr, X_te, Y_te = build_dataset(data_path, 150)
+    model = train_mlqp(2, [16], X_tr, Y_tr, X_te, Y_te, 10, 0.01, 0.8, 0.001)
+    figure = plt.figure()
+    plot_subgraph(figure, [1, 1, 1], model, 'binary')
+    plt.show()
+    pickle.dump(model, open('model.pkl', 'wb'))
+
+
+def min_max_main():
+    np.random.seed(0)
+    data_path = 'two-spiral traing data(update).txt'
+    X_tr, Y_tr, X_te, Y_te = build_dataset(data_path, 150)
+    minmax_model = MinMax()
+    minmax_model.train_minmax(2, [16], X_tr, Y_tr, X_te, Y_te, 10, 0.01, 0.8, 0.001)
+    figure = plt.figure()
+    plot_subgraph(figure, [3, 2, 1], minmax_model.model1, 'binary')
+    plot_subgraph(figure, [3, 2, 2], minmax_model.model2, 'binary')
+    plot_subgraph(figure, [3, 2, 3], minmax_model.model3, 'binary')
+    plot_subgraph(figure, [3, 2, 4], minmax_model.model4, 'binary')
+    plot_subgraph(figure, [3, 2, 5], minmax_model, 'binary')
     plt.show()
 
 
 if __name__ == '__main__':
-    np.random.seed(0)
-    data_path = 'two-spiral traing data(update).txt'
-    X_tr, Y_tr, X_te, Y_te = build_dataset(data_path, 150)
-    model = train(2, [16, 16], X_tr, Y_tr, X_te, Y_te, 10, 0.01, 0.8, 0.001)
-    plot_graph(model, 'binary')
-    pickle.dump(model, open('model.pkl', 'wb'))
+    min_max_main()
