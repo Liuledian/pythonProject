@@ -37,7 +37,7 @@ class MLQP():
         # Create placeholder for local gradient delta_k
         self.deltas = [None] * (self.n_hidden + 2)
         self.loss = None
-        self.one_hot_y = None
+        self.y_true = None
 
     @staticmethod
     def sigmoid(z):
@@ -59,20 +59,23 @@ class MLQP():
         return self.xs[-1].item()
 
     def compute_loss(self, y_true):
-        p_pred = self.xs[-1]
-        p_pred = np.hstack([p_pred, 1 - p_pred])
-        self.one_hot_y = np.zeros([1, 2])
+        p_pred = self.xs[-1].item()
+        self.y_true = y_true
         if y_true == 1:
-            self.one_hot_y[0, 0] = 1
+            self.loss = -np.log2(p_pred)
         else:
-            self.one_hot_y[0, 1] = 1
-        self.loss = np.sum(-self.one_hot_y * np.log2(p_pred))
+            self.loss = -np.log2(1 - p_pred)
         return self.loss
 
     def backward(self):
         p_pred = self.xs[-1]
-        t = np.hstack([-1 / p_pred, 1 / (1 - p_pred)])
-        self.deltas[-1] = np.sum(t * self.one_hot_y) * MLQP.sigmoid_dot(self.zs[-1])
+        # Compute output layer local gradients
+        if self.y_true == 1:
+            self.deltas[-1] = -1 / p_pred * MLQP.sigmoid_dot(self.zs[-1])
+        else:
+            self.deltas[-1] = 1 / (1 - p_pred) * MLQP.sigmoid_dot(self.zs[-1])
+
+        # Computer local gradients of other layers
         for i in range(self.n_hidden, 0, -1):
             self.deltas[i] = (self.Wq_ls[i + 1] * 2 * self.xs[i].T + self.Wl_ls[i + 1]) \
                              @ self.deltas[i + 1] \
