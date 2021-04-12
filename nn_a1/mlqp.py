@@ -60,6 +60,10 @@ class MLQP():
 
     def compute_loss(self, y_true):
         p_pred = self.xs[-1].item()
+        # Avoid log 0
+        epsilon = 1e-10
+        p_pred = np.clip(p_pred, epsilon, 1 - epsilon)
+
         self.y_true = y_true
         if y_true == 1:
             self.loss = -np.log2(p_pred)
@@ -68,7 +72,10 @@ class MLQP():
         return self.loss
 
     def backward(self):
-        p_pred = self.xs[-1]
+        p_pred = self.xs[-1].item()
+        # Avoid zero division
+        epsilon = 1e-10
+        p_pred = np.clip(p_pred, epsilon, 1 - epsilon)
         # Compute output layer local gradients
         if self.y_true == 1:
             self.deltas[-1] = -1 / p_pred * MLQP.sigmoid_dot(self.zs[-1])
