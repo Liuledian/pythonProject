@@ -1,9 +1,11 @@
 from sklearn.svm import LinearSVC
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
+import matplotlib.pyplot as plt
 import os
+import pickle
 
 Y_True = None
 
@@ -77,7 +79,35 @@ class SVMMinMax:
                          neg_idx[:d], neg_idx[d:2*d], neg_idx[2*d:3*d], neg_idx[3*d:])
 
     def fit_prior(self, X, y):
-        pass
+        flag = 0
+        pos = np.argwhere(y == 1).flatten()
+        c1 = np.argwhere(Y_True == -1).flatten()
+        if pos[0] == c1[0]:
+            flag = 1
+        c1 = np.random.permutation(c1)
+        mid_c1 = len(c1) // 2
+        c1_l, c1_r = c1[:mid_c1], c1[mid_c1:]
+
+        c2 = np.argwhere(Y_True == 0).flatten()
+        if pos[0] == c2[0]:
+            flag = 2
+        c2 = np.random.permutation(c2)
+        mid_c2 = len(c2) // 2
+        c2_l, c2_r = c2[:mid_c2], c2[mid_c2:]
+
+        c3 = np.argwhere(Y_True == 1).flatten()
+        if pos[0] == c3[0]:
+            flag = 3
+        c3 = np.random.permutation(c3)
+        mid_c3 = len(c3) // 2
+        c3_l, c3_r = c3[:mid_c3], c3[mid_c3:]
+
+        if flag == 1:
+            self.fit_combine(X, y, c1_l, c1_r, c2_l, c2_r, c3_l, c3_r)
+        elif flag == 2:
+            self.fit_combine(X, y, c2_l, c2_r, c1_l, c1_r, c3_l, c3_r)
+        elif flag == 3:
+            self.fit_combine(X, y, c3_l, c3_r, c1_l, c1_r, c2_l, c2_r)
 
     def fit_combine(self, X, y, p1, p2, n1, n2, n3, n4):
         idx = [None] * 8
@@ -128,12 +158,21 @@ def load_dataset(dir, scale):
 
 
 def create_svm_grid():
-    c_range = np.logspace(-5, 15, 11, base=2)
+    c_range = np.logspace(-5, 5, 11, base=2)
     param_grid = {'C': c_range}
     # According to sklearn docs dual is better False
     svm = LinearSVC(dual=False)
     svm_grid = GridSearchCV(svm, param_grid, n_jobs=-1, cv=4, return_train_score=True)
     return svm_grid
+
+
+def plot_confusion(y_true, y_pred, token):
+    cm = confusion_matrix(y_true, y_pred, normalize='true')
+    display = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=np.array([-1, 0, 1]))
+    display = display.plot(cmap='Blues')
+    display.figure_.suptitle(token)
+    plt.savefig('{}_cm.png'.format(token))
+    plt.show()
 
 
 def main_svm_orv():
@@ -144,10 +183,14 @@ def main_svm_orv():
     print('Test  Accuracy: {}, F1: {}'.format(acc, f1))
     acc, f1 = svm_orv.score(tr_data, tr_label)
     print('Train Accuracy: {}, F1: {}'.format(acc, f1))
-
+    # Plot confusion matrix
+    y_pred = svm_orv.predict(te_data)
+    plot_confusion(te_label, y_pred, 'normal')
     print(svm_orv.clf1.cv_results_)
     print(svm_orv.clf2.cv_results_)
     print(svm_orv.clf3.cv_results_)
+    # Save model
+    pickle.dump(svm_orv, open('orv_model.pkl', 'wb'))
 
 
 def main_svm_minmax_random():
@@ -158,10 +201,23 @@ def main_svm_minmax_random():
     print('Test  Accuracy: {}, F1: {}'.format(acc, f1))
     acc, f1 = svm_orv.score(tr_data, tr_label)
     print('Train Accuracy: {}, F1: {}'.format(acc, f1))
+    # Plot confusion matrix
+    y_pred = svm_orv.predict(te_data)
+    plot_confusion(te_label, y_pred, 'random')
+    # Save model
+    pickle.dump(svm_orv, open('random_model.pkl', 'wb'))
 
 
 def main_svm_minmax_prior():
     tr_data, tr_label, te_data, te_label = load_dataset('/Users/unity/Downloads/data_hw2', 'standard')
+    print(np.count_nonzero(tr_label == -1))
+    print(np.count_nonzero(tr_label == 0))
+    print(np.count_nonzero(tr_label == 1))
+    print(len(tr_label))
+    print(np.count_nonzero(te_label == -1))
+    print(np.count_nonzero(te_label == 0))
+    print(np.count_nonzero(te_label == 1))
+    print(len(te_label))
     global Y_True
     Y_True = tr_label
     svm_orv = SvmOvr(SVMMinMax('prior'), SVMMinMax('prior'), SVMMinMax('prior'))
@@ -170,13 +226,22 @@ def main_svm_minmax_prior():
     print('Test  Accuracy: {}, F1: {}'.format(acc, f1))
     acc, f1 = svm_orv.score(tr_data, tr_label)
     print('Train Accuracy: {}, F1: {}'.format(acc, f1))
+    y_pred = svm_orv.predict(te_data)
+    plot_confusion(te_label, y_pred, 'prior')
+    # Save model
+    pickle.dump(svm_orv, open('prior_model.pkl', 'wb'))
+
 
 if __name__ == '__main__':
-    '''
-       -1 12320
-        0 12144
-        1 12903
-          37367
-    '''
-    main_svm_minmax()
+    main_svm_minmax_prior()
 
+'''
+12320
+12144
+12903
+37367
+4480
+4416
+4692
+13588
+'''
