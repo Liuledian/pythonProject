@@ -5,6 +5,8 @@ from sklearn.metrics import accuracy_score, f1_score
 import numpy as np
 import os
 
+Y_True = None
+
 
 class SvmOvr:
     def __init__(self, clf1, clf2, clf3):
@@ -33,7 +35,7 @@ class SvmOvr:
         # label -1
         p1 = self.clf1.decision_function(X)
         # label 0
-        p2 = self.clf2.decision_funtion(X)
+        p2 = self.clf2.decision_function(X)
         # label 1
         p3 = self.clf3.decision_function(X)
 
@@ -45,8 +47,65 @@ class SvmOvr:
         pred_y = self.predict(X)
         acc = accuracy_score(y, pred_y)
         f1 = f1_score(y, pred_y, average='macro')
-        print('Accuracy: {}, F1: {}'.format(acc, f1))
         return acc, f1
+
+
+class SVMMinMax:
+    def __init__(self, decomp_type):
+        self.svm_ls = []
+        self.decomp_type = decomp_type
+        for i in range(8):
+            self.svm_ls.append(create_svm_grid())
+
+    def fit(self, X, y):
+        if self.decomp_type == 'random':
+            self.fit_random(X, y)
+        else:
+            self.fit_prior(X, y)
+
+    def fit_random(self, X, y):
+        pos_idx = np.argwhere(y == 1).flatten()
+        neg_idx = np.argwhere(y == 0).flatten()
+        pos_idx = np.random.permutation(pos_idx)
+        neg_idx = np.random.permutation(neg_idx)
+        n_pos = len(pos_idx)
+        mid_pos = n_pos // 2
+        n_neg = len(neg_idx)
+        d = n_neg // 4
+
+        self.fit_combine(X, y, pos_idx[:mid_pos], pos_idx[mid_pos:],
+                         neg_idx[:d], neg_idx[d:2*d], neg_idx[2*d:3*d], neg_idx[3*d:])
+
+    def fit_prior(self, X, y):
+        pass
+
+    def fit_combine(self, X, y, p1, p2, n1, n2, n3, n4):
+        idx = [None] * 8
+        idx[0] = np.concatenate([p1, n1])
+        idx[1] = np.concatenate([p1, n2])
+        idx[2] = np.concatenate([p1, n3])
+        idx[3] = np.concatenate([p1, n4])
+        idx[4] = np.concatenate([p2, n1])
+        idx[5] = np.concatenate([p2, n2])
+        idx[6] = np.concatenate([p2, n3])
+        idx[7] = np.concatenate([p2, n4])
+        for i in range(8):
+            print("Training {}/8 sub svm".format(i))
+            self.svm_ls[i].fit(X[idx[i], :], y[idx[i]])
+
+    def decision_function(self, X):
+        up_half = []
+        for i in range(0, 4):
+            up_half.append(self.svm_ls[i].decision_function(X))
+        up_res = np.min(np.vstack(up_half), axis=0)
+
+        down_half = []
+        for i in range(4, 8):
+            down_half.append(self.svm_ls[i].decision_function(X))
+        down_res = np.min(np.vstack(down_half), axis=0)
+
+        res = np.maximum(up_res, down_res)
+        return res
 
 
 def load_dataset(dir, scale):
@@ -73,12 +132,51 @@ def create_svm_grid():
     param_grid = {'C': c_range}
     # According to sklearn docs dual is better False
     svm = LinearSVC(dual=False)
-    svm_grid = GridSearchCV(svm, param_grid, n_jobs=-1, verbose=4, cv=4, return_train_score=True)
+    svm_grid = GridSearchCV(svm, param_grid, n_jobs=-1, cv=4, return_train_score=True)
     return svm_grid
 
 
-if __name__ == '__main__':
+def main_svm_orv():
     tr_data, tr_label, te_data, te_label = load_dataset('/Users/unity/Downloads/data_hw2', 'standard')
     svm_orv = SvmOvr(create_svm_grid(), create_svm_grid(), create_svm_grid())
     svm_orv.fit(tr_data, tr_label)
-    svm_orv.score(te_data, te_label)
+    acc, f1 = svm_orv.score(te_data, te_label)
+    print('Test  Accuracy: {}, F1: {}'.format(acc, f1))
+    acc, f1 = svm_orv.score(tr_data, tr_label)
+    print('Train Accuracy: {}, F1: {}'.format(acc, f1))
+
+    print(svm_orv.clf1.cv_results_)
+    print(svm_orv.clf2.cv_results_)
+    print(svm_orv.clf3.cv_results_)
+
+
+def main_svm_minmax_random():
+    tr_data, tr_label, te_data, te_label = load_dataset('/Users/unity/Downloads/data_hw2', 'standard')
+    svm_orv = SvmOvr(SVMMinMax('random'), SVMMinMax('random'), SVMMinMax('random'))
+    svm_orv.fit(tr_data, tr_label)
+    acc, f1 = svm_orv.score(te_data, te_label)
+    print('Test  Accuracy: {}, F1: {}'.format(acc, f1))
+    acc, f1 = svm_orv.score(tr_data, tr_label)
+    print('Train Accuracy: {}, F1: {}'.format(acc, f1))
+
+
+def main_svm_minmax_prior():
+    tr_data, tr_label, te_data, te_label = load_dataset('/Users/unity/Downloads/data_hw2', 'standard')
+    global Y_True
+    Y_True = tr_label
+    svm_orv = SvmOvr(SVMMinMax('prior'), SVMMinMax('prior'), SVMMinMax('prior'))
+    svm_orv.fit(tr_data, tr_label)
+    acc, f1 = svm_orv.score(te_data, te_label)
+    print('Test  Accuracy: {}, F1: {}'.format(acc, f1))
+    acc, f1 = svm_orv.score(tr_data, tr_label)
+    print('Train Accuracy: {}, F1: {}'.format(acc, f1))
+
+if __name__ == '__main__':
+    '''
+       -1 12320
+        0 12144
+        1 12903
+          37367
+    '''
+    main_svm_minmax()
+
