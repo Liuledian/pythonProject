@@ -45,9 +45,12 @@ def evaluate_dann(model, dataset, batch_size):
     dataloader = DataLoader(dataset, batch_size)
     y_true = []
     y_pred = []
+    model.eval()
     with torch.no_grad():
         for data, label in dataloader:
-            y_true.extend(label.detach().cpu().numpy())
+            y_true.extend(label)
+            if cuda:
+                data = data.cuda()
             class_output, _ = model(data, 0)
             y_pred_torch = torch.argmax(class_output, dim=1)
             y_pred.extend(y_pred_torch.detach().cpu().numpy())
@@ -58,7 +61,6 @@ def evaluate_dann(model, dataset, batch_size):
 
 
 def train_dann(dataset_source, dataset_target, n_epoch, batch_size, in_dim, h_dims, out_dim, ckpt_save_path):
-    cuda = False
     lr = 1e-3
     l_d = 0.1
 
@@ -187,8 +189,10 @@ def main():
 
 
 if __name__ == '__main__':
-    manual_seed = 0
-    random.seed(manual_seed)
-    torch.manual_seed(manual_seed)
-    main()
+    # cuda = True
+    # manual_seed = 0
+    # random.seed(manual_seed)
+    # torch.manual_seed(manual_seed)
+    # main()
+
 
