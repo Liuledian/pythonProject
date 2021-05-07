@@ -189,10 +189,10 @@ def main():
 
 
 if __name__ == '__main__':
-    # cuda = True
-    # manual_seed = 0
-    # random.seed(manual_seed)
-    # torch.manual_seed(manual_seed)
-    # main()
+    cuda = True
+    manual_seed = 0
+    random.seed(manual_seed)
+    torch.manual_seed(manual_seed)
+    main()
 
 
