@@ -6,9 +6,10 @@ requests==2.25.0
 urllib3==1.26.2
 flask==1.1.2
 gunicorn
-tqdm
-matplotlib
-sklearn
-numpy
+tqdm~=4.59.0
+matplotlib~=3.4.0
+sklearn~=0.0
+numpy~=1.20.1
 torch==1.6
 torchvision
+scikit-learn~=0.24.1
