@@ -107,6 +107,7 @@ def train_lstm(tr_set, te_set, epoch, batch_size, lr,  n_class, in_dim, h_dim, n
         shuffle=True,
     )
     model = LSTMClf(n_class, in_dim, h_dim, n_layers, cls_dim, dropout)
+    model = model.cuda()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     best_acc = 0
     best_ep = 0
@@ -116,12 +117,14 @@ def train_lstm(tr_set, te_set, epoch, batch_size, lr,  n_class, in_dim, h_dim, n
         ns = 0
         for x, y in tr_loader:
             bs = len(y)
+            x = x.cuda()
+            y = y.cuda()
             output = model(x)
             loss = F.cross_entropy(output, y)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            loss_sum += loss * bs
+            loss_sum += loss.item() * bs
             ns += bs
 
         te_acc, te_f1 = evaluate(model, te_loader)
@@ -145,9 +148,11 @@ def evaluate(model, dataloader):
     with torch.no_grad():
         for x, y in dataloader:
             y_true.extend(y)
+            y = y.cuda()
+            x = x.cuda()
             output = model(x)
             pred = torch.argmax(output, dim=1)
-            y_pred.extend(pred)
+            y_pred.extend(pred.cpu().numpy())
 
     acc = accuracy_score(y_true, y_pred)
     f1 = f1_score(y_true, y_pred, average='macro')
@@ -158,6 +163,7 @@ def main():
     train_data_ls, train_label_ls, test_data_ls, test_label_ls = load_lstm_dataset(args.dir)
     tr_dataset = SeqDataset(train_data_ls, train_label_ls)
     te_dataset = SeqDataset(test_data_ls, test_label_ls)
+    torch.manual_seed(0)
     train_lstm(tr_dataset, te_dataset, args.epoch, 16, 0.001, 3, 310, 128, 2, 128, 0.7, './lstm_seed.ckpt')
 
 

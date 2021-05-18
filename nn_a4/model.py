@@ -22,9 +22,9 @@ class LSTMClf(nn.Module):
     def forward(self, x):
         batch_size = x.size(0)
         h0 = self.h0.expand(batch_size, self.n_layers, self.h_dim)
-        h0 = h0.transpose(0, 1)
+        h0 = h0.transpose(0, 1).contiguous()
         c0 = self.c0.expand(batch_size, self.n_layers, self.h_dim)
-        c0 = c0.transpose(0, 1)
+        c0 = c0.transpose(0, 1).contiguous()
         out, (hn, cn) = self.lstm(x, (h0, c0))
         output = self.cls(hn[-1])
         return output

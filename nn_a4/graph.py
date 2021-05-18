@@ -15,7 +15,7 @@ def plot_confusion(y_true, y_pred, token):
     plt.show()
 
 
-def predict(model, dataset, batch_size):
+def predict(model, dataset, batch_size=16):
     y_pred = []
     y_true = []
     dataloader = DataLoader(dataset, batch_size)
