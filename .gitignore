@@ -3,3 +3,5 @@
 venv
 **/*.ckpt
 **/*log
+**/__pycache__
+**/*.pkl

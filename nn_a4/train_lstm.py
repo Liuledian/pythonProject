@@ -1,14 +1,13 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
 import os
 import sklearn
 import logging
 import argparse
+from nn_a4.model import LSTMClf
 
 LENGTHS_CLIP = [238, 233, 206, 238, 185, 195, 237, 216, 265, 237, 235, 233, 235, 238, 206]
 MAX_LENGTH = 238
@@ -40,34 +39,6 @@ def get_logger():
 
 
 logger = get_logger()
-
-
-class Classifier(nn.Module):
-    def __init__(self, n_class=3, in_dim=310, h_dim=128, n_layers=2, cls_dim=128, dropout=0.7):
-        super(Classifier, self).__init__()
-        self.n_layers = n_layers
-        self.h_dim = h_dim
-        self.lstm = nn.LSTM(input_size=in_dim, hidden_size=h_dim, num_layers=n_layers, dropout=dropout, batch_first=True)
-        self.cls = nn.Sequential(
-            nn.Linear(h_dim, cls_dim),
-            nn.BatchNorm1d(cls_dim),
-            nn.LeakyReLU(),
-            nn.Linear(cls_dim, n_class),
-        )
-        self.h0 = nn.Parameter(torch.zeros(n_layers, h_dim))
-        self.c0 = nn.Parameter(torch.zeros(n_layers, h_dim))
-        nn.init.kaiming_uniform_(self.h0)
-        nn.init.kaiming_uniform_(self.c0)
-
-    def forward(self, x):
-        batch_size = x.size(0)
-        h0 = self.h0.expand(batch_size, self.n_layers, self.h_dim)
-        h0 = h0.transpose(0, 1)
-        c0 = self.c0.expand(batch_size, self.n_layers, self.h_dim)
-        c0 = c0.transpose(0, 1)
-        out, (hn, cn) = self.lstm(x, (h0, c0))
-        output = self.cls(hn[-1])
-        return output
 
 
 class SeqDataset(Dataset):
@@ -135,7 +106,7 @@ def train_lstm(tr_set, te_set, epoch, batch_size, lr,  n_class, in_dim, h_dim, n
         batch_size=batch_size,
         shuffle=True,
     )
-    model = Classifier(n_class, in_dim, h_dim, n_layers, cls_dim, dropout)
+    model = LSTMClf(n_class, in_dim, h_dim, n_layers, cls_dim, dropout)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     best_acc = 0
     best_ep = 0
