@@ -1,4 +1,4 @@
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import DataLoader
@@ -16,6 +16,7 @@ def plot_confusion(y_true, y_pred, token):
 
 
 def predict(model, dataset, batch_size=16):
+    model.eval()
     y_pred = []
     y_true = []
     dataloader = DataLoader(dataset, batch_size)
@@ -34,13 +35,17 @@ def main_plot():
     ckpt = torch.load(ckpt_path)
     epoch = ckpt['epoch']
     state = ckpt['state_dict']
+    print('epoch: {}'.format(epoch))
     model = LSTMClf(3, 310, 128, 2, 128, 0.7)
     model.load_state_dict(state)
     train_data_ls, train_label_ls, test_data_ls, test_label_ls = load_lstm_dataset(args.dir)
     # tr_dataset = SeqDataset(train_data_ls, train_label_ls)
     te_dataset = SeqDataset(test_data_ls, test_label_ls)
     y_true, y_pred = predict(model, te_dataset)
-    plot_confusion(y_true, y_pred, 'lstm_cm')
+    plot_confusion(y_true, y_pred, 'lstm')
+    acc = accuracy_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred, average='macro')
+    print('acc: {}; f1: {}'.format(acc, f1))
 
 
 if __name__ == '__main__':
